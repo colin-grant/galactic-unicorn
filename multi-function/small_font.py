@@ -218,18 +218,20 @@ MONTH_NAMES = [ [ MX_J, SPACE, MX_A, SPACE, MX_N ],
                 [ MX_D, SPACE, MX_E, SPACE, MX_C ],
                 ]
 
-def display_time(display, hours, minutes, x, y, pen=None, justified='left'):
+# display time is used to display a 2 digit time separated by a colon.
+# this could be hours and minutes (for clock) or minutes and seconds (for timers). 
+def display_time(display, figure1, figure2, x, y, pen=None, justified='left'):
 
     matrix_list = []
     
-    hours_matrix = generate_number_matrix_list(hours, min_width=2)
-    minutes_matrix = generate_number_matrix_list(minutes, min_width=2)
+    figure1_matrix = generate_number_matrix_list(figure1, min_width=2)
+    figure2_matrix = generate_number_matrix_list(figure2, min_width=2)
     
-    matrix_list.extend(hours_matrix)
+    matrix_list.extend(figure1_matrix)
     matrix_list.append(SPACE)
     matrix_list.append(COLON)
     matrix_list.append(SPACE)
-    matrix_list.extend(minutes_matrix)
+    matrix_list.extend(figure2_matrix)
     
     next_x = plot_matrix_list(display, matrix_list, x, y, pen, justified=justified) 
 

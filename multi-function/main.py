@@ -4,27 +4,22 @@ import time
 import math
 import machine
 import network
-import urequests
 import ntptime
 from galactic import GalacticUnicorn
 from picographics import PicoGraphics, DISPLAY_GALACTIC_UNICORN as DISPLAY
+from common.galacticunicornbutton import GalacticUnicornButton 
 
-from weather_api_map import WEATHER_API_MAP
-import small_font as sf
-import weathericons
+from operatingmode import OperatingMode 
+from setup import OPERATING_MODES
 
 # Make sure we can get the wifi credentials. 
 try:
-    from secrets import WIFI_CREDENTIALS, WEATHER_API_KEY
+    from secrets import WIFI_CREDENTIALS
     wifi_available = True
 except ImportError:
     print("Create secrets.py with your security credentials.")
     wifi_available = False
    
-
-WEATHER_API_URL = 'http://api.weatherapi.com/v1/current.json'
-WEATHER_API_LOCATION = 'Berkhamsted'
-
 # create galactic object and graphics surface for drawing
 gu = GalacticUnicorn()
 graphics = PicoGraphics(DISPLAY)
@@ -32,34 +27,14 @@ graphics = PicoGraphics(DISPLAY)
 # create the real time clock object
 rtc = machine.RTC()
 
-# task timers
-WEATHER_POLL_TIME = 60 * 1000 # poll weather every minute.
-next_weather_time = -1
-
-CLOCK_TICK_TIME = 500 # redisplay clock every 0.5 seconds 
-next_clock_time = -1
-
-utc_hours = 0
-utc_offset = 0
-
-WHITE = graphics.create_pen(255,255,255)
-BLACK = graphics.create_pen(0,0,0)
-DATE_PEN = graphics.create_pen(255,50,100)
-TEMP_C_PEN = graphics.create_pen(255,128,0) 
-HUMIDITY_PEN = graphics.create_pen(0,255,255)
-CLOCK_PEN = graphics.create_pen(0,255,0)
-WEATHER_BG_PEN = graphics.create_pen(0,0,0)
-
-WEATHER_WIDTH=29
-
 # Control the brightness using the light sensor
 BRIGHTNESS_CHECK_TIME = 5000 # check brightness every 5 seconds
 next_brightness_check_time = -1
 
 MIN_BRIGHTNESS = 0.05
-MAX_BRIGHTNESS = 0.6
+MAX_BRIGHTNESS = 0.4
 
-MIN_LIGHT_LEVEL = 15
+MIN_LIGHT_LEVEL = 20
 MAX_LIGHT_LEVEL = 100 
 
 # the wireless lan device:
@@ -73,7 +48,27 @@ def current_time_ms():
 
 def debug(output_string):
     if ( show_debug ):
-        print(output_string) 
+        print(output_string)
+
+def clear_screen():
+    graphics.set_pen(graphics.create_pen(0,0,0))
+    graphics.clear()
+    gu.update(graphics) 
+    
+def show_connecting():
+    clear_screen()
+    graphics.set_pen(graphics.create_pen(255,255,255))
+    graphics.set_font("bitmap8")
+    graphics.text("Connecting",0,1, scale=0.5)
+    gu.update(graphics)
+    
+def hello():
+    clear_screen() 
+    graphics.set_pen(graphics.create_pen(255,255,255))
+    graphics.set_font("bitmap8")
+    graphics.text("Hello",0,1, scale=0.5)
+    gu.update(graphics)
+    time.sleep(1)
 
 # Check status of wifi and connect if necessary
 # (Might put this in a library) 
@@ -93,144 +88,53 @@ def check_wifi():
     #        every n seconds. (Not sure if wlan.is_connected() is expensive or not - need to test.
     if ( not wlan.isconnected() ):
 
-        for wifi_ssid, wifi_password in WIFI_CREDENTIALS:
+        while not wlan.isconnected():
+
+            for wifi_ssid, wifi_password in WIFI_CREDENTIALS:
             
-            debug(f"Connecting to {wifi_ssid}") 
-            wlan.connect(wifi_ssid, wifi_password)
-            
-            # Wait for connection
-            for _ in range(0,10):
-                if not wlan.isconnected():
-                    # TODO - maybe have graphical representation of connecting.
-                    debug("Waiting for Connection") 
-                    time.sleep(0.5)
-                else:
-                    break;
+                debug(f"Connecting to {wifi_ssid}") 
+                wlan.connect(wifi_ssid, wifi_password)
                 
-            if ( wlan.isconnected() ):
-                ip, subnet, gateway, dns_server = wlan.ifconfig() 
-                debug(f"Connected to {wifi_ssid}, ip address = {ip}")
-                break ;
-            else:
-                debug(f"Failed to connect to sid {wifi_ssid}") 
+                # Wait for connection
+                for _ in range(0,10):
+                    if not wlan.isconnected():
+                        # TODO - maybe have graphical representation of connecting.
+                        debug("Waiting for Connection") 
+                        clear_screen()
+                        time.sleep(0.5)
+                        show_connecting()
+                        time.sleep(0.5) 
+                    else:
+                        break;
+                    
+                if ( wlan.isconnected() ):
+                    ip, subnet, gateway, dns_server = wlan.ifconfig() 
+                    debug(f"Connected to {wifi_ssid}, ip address = {ip}")
+                    break ;
+                else:
+                    debug(f"Failed to connect to sid {wifi_ssid}")
+            
+        clear_screen()
 
 # Connect to wifi and synchronize the RTC time from NTP
 def sync_time():
     if not wifi_available:
         return
 
-    try:
-        ntptime.settime()
-        debug("Time set")
-    except OSError:
-        pass
-
-
-def show_weather():
+    # Try a few times
+    time_synced = False
+    i = 0
+    max_attempts = 5 
     
-    global next_weather_time
-    global current_hours 
-    
-    if ( next_weather_time == -1 or current_time_ms() > next_weather_time ):
-        
+    while not time_synced and i < max_attempts:
+        i += 1 
         try:
-            # get current weather from weatherapi.com
-            fullurl = f'{WEATHER_API_URL}?key={WEATHER_API_KEY}&q={WEATHER_API_LOCATION}&aqi=yes'
-            debug(f"Requesting call to {fullurl}")
-            
-            json_response = None
-            
-            response = urequests.get(fullurl)
-            
-            if ( response.status_code == 200 ): 
-                json_response = response.json()
-
-                # extract time and compare with displayed time to see if we need to change the UTC offset.
-                location = json_response['location']
-                local_timedate_string = location['localtime']
-                parts = local_timedate_string.split(" ")
-                localtime = parts[1] 
-
-                h,m = localtime.split(":")
-                debug(f"Time = {h}:{m}") 
-                utc_offset = utc_hours - int(h)
-                
-                # extract weather fields we're interested in 
-                response_weather = json_response['current'] 
-                response_weather_condition = response_weather['condition'] 
-
-                weather = dict()
-                
-                weather_text = WEATHER_API_MAP.get(response_weather_condition['text']) 
-                
-                weather['text'] = weather_text
-                weather['temp_c'] = response_weather['temp_c']
-                weather['wind_mph'] = response_weather['wind_mph']
-                weather['humidity'] = response_weather['humidity']
-                
-                debug(f"weather condition = {response_weather_condition}")
-                debug(f"weather = {weather}")
-                
-                # convert to display
-                display_weather(weather)
-
-            response.close()
-            
-        except Exception as e:
-            debug(f"Error occurred requesting weather data: {e}") 
-
-        next_weather_time = current_time_ms() + WEATHER_POLL_TIME
-        
-
-# This bit actually displays the weather on the galactic unicorn. 
-def display_weather(weather):
-    
-    graphics.set_pen(WEATHER_BG_PEN)
-    graphics.rectangle(0,0,WEATHER_WIDTH,11)
-    temp_c = int(weather['temp_c'])
-    sf.display_temp_c(graphics, temp_c, 6, 6, pen=TEMP_C_PEN, justified='right')
-    humidity = int(weather['humidity'])
-    sf.display_humidity(graphics, humidity, 6,0, pen=HUMIDITY_PEN, justified='right')
-    weathericons.draw_weather_icon(graphics, weather['text'], 18,0)
-    
-    
-    
-def show_centred_text(text, offset, width):
-    
-    # set the font
-    graphics.set_font("bitmap8")
-    graphics.set_pen(WHITE)
-    
-    # calculate text position so that it is centred
-    w = graphics.measure_text(text, 1)
-    x = int(width / 2 - w / 2 + 1) + offset 
-    y = 2
-    
-    graphics.text(text, x, y, -1, 1) 
-    
-    
-def show_clock():
-    
-    global next_clock_time
-    global rtc
-    global utc_offset
-    global utc_hours
-    
-    if ( next_clock_time == -1 or current_time_ms() > next_clock_time ):
-        
-        year, month, day, wd, hour, minute, second, _ = rtc.datetime()
-        
-        utc_hours = hour
-        hour += utc_offset 
-        
-        graphics.set_pen(BLACK)
-        graphics.rectangle(29, 0, 24,5)
-        graphics.rectangle(29, 6, 24,5)
-        
-        sf.display_time(graphics, hour, minute, 52, 0, pen=CLOCK_PEN, justified='right')
-        sf.display_long_date(graphics, day, month, 52, 6, pen=DATE_PEN, justified='right')
-        
-        next_clock_time = current_time_ms() + CLOCK_TICK_TIME 
+            ntptime.settime()
+            time_synced = True 
+            debug("Time set")
+        except OSError:
+            debug(f"Failure syncing time attempt {i} of {max_attempts}") 
+            pass
     
 def check_brightness():
     
@@ -246,7 +150,7 @@ def check_brightness():
         #graphics.line(0,5,53,5)
         #graphics.set_pen(WHITE)
         #graphics.line(0,5,min(53,int(light_level)),5)
-        #print(f'light level = {light_level}')
+        print(f'light level = {light_level}')
             
         if light_level < MIN_LIGHT_LEVEL:
             brightness = 0
@@ -257,20 +161,45 @@ def check_brightness():
         #print(f"brightness = {brightness}")
 
         gu.set_brightness(brightness)
+        
+        if brightness == 0:
+            print("Going into a deep sleep now")
+            time.sleep(0.5)
+            clear_screen()
+            #machine.lightsleep(5000)
+            time.sleep(5)
+            print("Out of deep sleep")
 
         next_brightness_check_time = current_time_ms() + BRIGHTNESS_CHECK_TIME 
     
-
 
 # ------------------------------------------------------------------------
 # -                       INITIALISATION                                  -
 # ------------------------------------------------------------------------
 
 gu.set_brightness(0.15)
+hello()
+# check_brightness will go into a deep sleep causing a reset if the light level is too low.
+# so we should do this before trying to connect to the network. 
+check_brightness()
 
 check_wifi()
-sync_time() 
+sync_time()
 
+for mode in OPERATING_MODES:
+    mode.set_rtc(rtc)
+    mode.set_unicorn(gu)
+    mode.set_display(graphics)
+    
+# Set the first mode active.
+active_mode_index = 0
+prev_active_index = None
+
+if len(OPERATING_MODES) > 0:
+    active_mode_index = 0 
+    OPERATING_MODES[active_mode_index].set_active(True)
+
+switch_a = GalacticUnicornButton(gu, GalacticUnicorn.SWITCH_A)
 
 # ------------------------------------------------------------------------
 # -                       THE MAIN LOOP                                  -
@@ -279,19 +208,41 @@ while True:
     
     check_wifi() 
     
-    # Monitor brightness buttons 
-    #if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP):
-    #    gu.adjust_brightness(+0.01)
+    if switch_a.is_clicked:
+        # change operating mode
+        OPERATING_MODES[active_mode_index].set_active(False)
+        active_mode_index += 1
+        if active_mode_index >= len(OPERATING_MODES):
+            active_mode_index = 0
+        OPERATING_MODES[active_mode_index].set_active(True)
+        prev_mode_index = None 
 
-    #if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN):
-    #    gu.adjust_brightness(-0.01)
+    # Go through the modes - sending them a run request.
+    # They will maintain whether they are active or not, so only the active mode should do any
+    # updates to the display.
+    for mode_index, mode in enumerate(OPERATING_MODES):
 
-    if gu.is_pressed(GalacticUnicorn.SWITCH_A):
-        sync_time()
+        status = mode.run()
+        
+        if status == OperatingMode.CHANGE_ACTIVE:
+            # This mode wants to become temporarily active, so we change it, and save the previous active
+            # mode so we can roll back when the temporary mode wants to become inactive. 
+            OPERATING_MODES[active_mode_index].set_active(False) 
+            prev_active_index = active_mode_index
+            mode.set_active(True) 
+            active_mode_index = mode_index
+            
+        elif status == OperatingMode.CHANGE_INACTIVE:
+            # If there's a previous mode, then roll back since the temporary mode has become inactive.
+            # (Note - this can become confusing if multiple modes do this - so use carefully. We could consider using a stack
+            # for the previous modes so we can roll back to previous temporary modes?). 
+            if prev_active_index != None:
+                mode.set_active(False) 
+                active_mode_index = prev_active_index   
+                prev_active_index = None 
+                OPERATING_MODES[active_mode_index].set_active(True)
 
     # update the display
-    show_weather()
-    show_clock()
     check_brightness()
     
     gu.update(graphics)
