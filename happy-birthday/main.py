@@ -46,20 +46,26 @@ SONG_LENGTH = len(right_hand_notes)
 # Create 2 channels - one for left hand notes, one for right hand notes.
 channels = [gu.synth_channel(i) for i in range(len(notes))]
 
-
-
-lines = [ 'Happy Birthday To You', 'Happy Birthday To You', 'Happy Birthday Dear ?????', 'Happy Birthday To You' ]
+words = [   (0,'Happy'), (2,'Birthday'), (6,'To'), (8,'You'),
+            (12,'Happy'), (14,'Birthday'), (18,'To'), (20,'You'),
+            (24,'Happy'), (26,'Birthday'), (30,'Dear'), (32,'?????'),
+            (36,'Happy'), (38,'Birthday'), (42,'To'), (44,'You'),
+            ]
 
 is_a_pressed = False    
 is_playing = False
 
-current_line = 0
-current_position = 0 
+beat_index = 0
+word_index = 0 
 
 def build_channels(index):
     pass 
     
 def reset():
+    global beat_index,word_index
+    beat_index = 0
+    word_index = 0
+    
     gu.stop_playing()
     # Configure music channels
     for i in range(len(channels)):
@@ -69,9 +75,6 @@ def reset():
                               sustain=0xafff / 65535,
                               release=0.168,
                               volume=10000 / 65535)
-    # Reset text positions.
-    currentLine = 0
-    currentPosition = 0
 
 def clear_screen():
     graphics.set_pen(graphics.create_pen(0,0,0))
@@ -82,60 +85,71 @@ def text(toDisplay,colour=(255,255,255)):
     clear_screen() 
     graphics.set_pen(graphics.create_pen(colour[0],colour[1],colour[2]))
     graphics.set_font("bitmap8")
-    graphics.text(toDisplay,0,1, scale=0.5)
+    graphics.text(toDisplay,2,1, scale=0.5)
     gu.update(graphics)
     time.sleep(1)
     
-beat = 0
-
 def next_beat():
-    global beat
-    for i in range(len(notes)):
-        if notes[i][beat] > 0:
-            channels[i].frequency(notes[i][beat])
-            channels[i].trigger_attack()
-        elif notes[i][beat] == -1:
-            channels[i].trigger_release()
-    beat = beat + 1
+    global beat_index, word_index
     
-    if beat == SONG_LENGTH:
+    for i in range(len(notes)):
+        if notes[i][beat_index] > 0:
+            channels[i].frequency(notes[i][beat_index])
+            channels[i].trigger_attack()
+        elif notes[i][beat_index] == -1:
+            channels[i].trigger_release()
+
+    beat_index = beat_index + 1
+    
+    if beat_index == SONG_LENGTH:
         return False
     
     return True 
+
+def next_word():
+    global beat_index, word_index
     
+    # See if we need to move to the next word. 
+    if ( word_index < len(words) ):
+        word_beat_index, word = words[word_index]
+        print(f'word = {word}, word_beat_index = {word_beat_index}, beat_index = {beat_index}')
+        if ( word_beat_index == beat_index ):
+            text(word, colour=(0,255,0))
+            word_index += 1
+
 text("press a")
 
-isPlaying = False
+next_beat_time = 0
 
 while True:
 
     if gu.is_pressed(GalacticUnicorn.SWITCH_A):
         if not is_a_pressed:
             reset()
-            if ( isPlaying ):
-                isPlaying = False
+            if ( is_playing ):
+                is_playing = False
+                gu.stop_playing() 
             else:
-                text("Happy B'day",colour=(0,255,0))
-                isPlaying = True
+                is_playing = True
+                next_beat_time = 0 
                 
             was_a_pressed = True
         else:
             was_a_pressed = False
+    if is_playing:
 
-    
-    
-    if isPlaying:
+        #next_word() 
 
-        # Carry on showing the lines and playing the music. 
-        is_next = next_beat()
-        gu.play_synth()
-
-        if not is_next:
-            reset() 
-            isPlaying = False
-            text("press a")
+        # Carry on showing the lines and playing the music.
+        if ( time.ticks_ms() >= next_beat_time ):
+            is_next = next_beat()
+            next_beat_time = time.ticks_ms() + 350 
+            gu.play_synth()
+            if not is_next:
+                reset() 
+                is_playing = False
+                clear_screen(); 
             
         # if finished all lines, text and music, reset
         # isPlaying = False
-        
-    time.sleep(0.35) 
+    time.sleep(0.1) 
