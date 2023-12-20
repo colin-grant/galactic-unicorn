@@ -1,4 +1,6 @@
 
+import common.util as util
+
 ORANGE1 = (255,128,0)
 ORANGE2 = (255,192,0)
 YELLOW = (255,255,0)
@@ -11,7 +13,7 @@ GREY = (128,128,128)
 ICON_WIDTH = 11 
 ICON_HEIGHT = 11
 
-# We draw the icons as an 2d array of lines - each line is a tuple with the start pixel, length and pen colour.
+# We draw the icons as an 2d array of lines - each line contains tuples with the start pixel, length and pen colour.
 WEATHER_ICONS = { "sunny" : [
                                 [],
                                 [(1,1,YELLOW), (5,1,YELLOW), (9,1,YELLOW)],
@@ -107,26 +109,10 @@ WEATHER_ICONS = { "sunny" : [
                               [] ]              }
 
 
-
-# POSSIBLE REFACTOR: This is quite generic - so we could just have a 'get_weather_icon' that
-# returns the vectors, and a more generic function that goes off and draws it. 
 def draw_weather_icon( display, icon_name, x, y ):
     
-    black_pen = display.create_pen(*BLACK)
-    display.set_pen(black_pen)
-    display.rectangle(x,y,ICON_WIDTH,ICON_HEIGHT)
-    
     icon_vectors = WEATHER_ICONS.get(icon_name)
-    
-    if icon_vectors:
-        
-        for row_num, row_vectors in enumerate(icon_vectors):
-            for vector in row_vectors:
-                start, length, colour = vector
-                pen = display.create_pen(*colour)
-                display.set_pen(pen)
-                display.line(x+start, y+row_num, x+start+length, y+row_num)
-
+    util.draw_icon(display, icon_vectors, x, y, ICON_WIDTH, ICON_HEIGHT) 
 
 if __name__ == '__main__' :
     

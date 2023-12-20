@@ -1,4 +1,5 @@
 
+from common.util import debug
 
 FONT_HEIGHT = 5 
 WHITE_RGB = (255,255,255)
@@ -131,11 +132,29 @@ MX_G = [ 1,1,1,1,
          1,0,0,1,
          1,1,1,1 ]
 
+MX_H = [ 1,0,0,1,
+         1,0,0,1,
+         1,1,1,1,
+         1,0,0,1,
+         1,0,0,1 ]
+
+MX_I = [ 1,1,1,
+         0,1,0,
+         0,1,0,
+         0,1,0,
+         1,1,1 ]
+
 MX_J = [ 1,1,1,
          0,1,0,
          0,1,0,
          0,1,0,
          1,1,0 ]
+
+MX_K = [ 1,0,1,
+         1,1,0,
+         1,0,0,
+         1,1,0,
+         1,0,1 ]
 
 MX_L = [ 1,0,0,
          1,0,0,
@@ -167,6 +186,14 @@ MX_P = [ 1,1,1,
          1,0,0,
          1,0,0 ]
 
+# Q might need a redesign? 
+MX_Q = [ 1,1,1,0,
+         1,0,1,0,
+         1,1,1,0,
+         1,1,1,0,
+         0,0,0,1 ]
+
+
 MX_R = [ 1,1,1,1,
          1,0,0,1,
          1,1,1,1,
@@ -197,13 +224,35 @@ MX_V = [ 1,0,1,
          1,0,1,
          0,1,0 ]
 
+MX_W = [ 1,0,0,0,1,
+         1,0,0,0,1,
+         1,0,1,0,1,
+         1,1,0,1,1,
+         1,0,0,0,1 ]
+
+MX_X = [ 1,0,0,0,1,
+         0,1,0,1,0,
+         0,0,1,0,0,
+         0,1,0,1,0,
+         1,0,0,0,1 ]
+
 MX_Y = [ 1,0,1,
          1,0,1,
          1,1,1,
          0,1,0,
-         0,1,0 ] 
+         0,1,0 ]
 
+MX_Z = [ 1,1,1,1,1,
+         0,0,0,1,0,
+         0,0,1,0,0,
+         0,1,0,0,0,
+         1,1,1,1,1 ]
 
+LETTERS = [ MX_A, MX_B, MX_C, MX_D, MX_E, MX_F, MX_G, 
+            MX_H, MX_I, MX_J, MX_K, MX_L, MX_M, MX_N,
+            MX_O, MX_P, MX_Q, MX_R, MX_S, MX_T, MX_U,             
+            MX_V, MX_W, MX_X, MX_Y, MX_Z ] 
+            
 MONTH_NAMES = [ [ MX_J, SPACE, MX_A, SPACE, MX_N ],
                 [ MX_F, SPACE, MX_E, SPACE, MX_B ],
                 [ MX_M, SPACE, MX_A, SPACE, MX_R ],
@@ -218,24 +267,78 @@ MONTH_NAMES = [ [ MX_J, SPACE, MX_A, SPACE, MX_N ],
                 [ MX_D, SPACE, MX_E, SPACE, MX_C ],
                 ]
 
+
+def display_word(display, word, x, y, pen=None, justified='left'):
+    
+    matrix_list = []
+    
+    is_first = True 
+    for i in range(0,len(word)):
+        letter = word[i] 
+        if ( letter == ' ' ):
+            matrix_list.append(SPACE)
+            matrix_list.append(SPACE)
+        else:
+            if ( letter > 'Z' ):
+                letter_index = int(ord(letter) - ord('a'))
+            else:
+                letter_index = int(ord(letter) - ord('A'))
+            
+            if ( letter_index >=0 and letter_index < 26 ):
+                if ( not is_first ):
+                    matrix_list.append(SPACE)
+                matrix_list.append(LETTERS[letter_index])
+            
+        is_first = False
+        
+    next_x = plot_matrix_list(display, matrix_list, x, y, pen, justified) 
+
 # display time is used to display a 2 digit time separated by a colon.
 # this could be hours and minutes (for clock) or minutes and seconds (for timers). 
 def display_time(display, figure1, figure2, x, y, pen=None, justified='left'):
 
+    return display_long_time(display, [figure1, figure2], x, y, pen, justified)
+
+# display time with any number of digits. 
+def display_long_time(display, figures, x, y, pen=None, justified='left'):
+    
     matrix_list = []
     
-    figure1_matrix = generate_number_matrix_list(figure1, min_width=2)
-    figure2_matrix = generate_number_matrix_list(figure2, min_width=2)
+    is_first = True
     
-    matrix_list.extend(figure1_matrix)
-    matrix_list.append(SPACE)
-    matrix_list.append(COLON)
-    matrix_list.append(SPACE)
-    matrix_list.extend(figure2_matrix)
+    for figure in figures:
+        if ( not is_first ):
+            matrix_list.append(SPACE)
+            matrix_list.append(COLON)
+            matrix_list.append(SPACE)
+            
+        figure_matrix = generate_number_matrix_list(figure, min_width=2)
+        matrix_list.extend(figure_matrix)
+        
+        is_first = False 
     
-    next_x = plot_matrix_list(display, matrix_list, x, y, pen, justified=justified) 
+    next_x = plot_matrix_list(display, matrix_list, x, y, pen, justified) 
 
     return next_x
+
+def display_days(display, days, x, y, pen=None, justified='left'):
+    
+    #debug(f"display_days, days = {days}, x= {x}, y= {y}")
+    
+    number_matrix = generate_number_matrix_list(days)
+    next_x = plot_matrix_list(display, number_matrix, x, y, pen, justified)
+    
+    matrix_list = []
+    matrix_list.append(SPACE)
+    matrix_list.append(MX_D)
+    matrix_list.append(MX_A)
+    matrix_list.append(MX_Y)
+    if ( days != 1 ):
+        matrix_list.append(MX_S)
+    next_x = plot_matrix_list(display, matrix_list, next_x, y, pen)
+    
+    return next_x 
+    
 
 # TODO - assume an integer for now. 
 def display_temp_c(display, temp_c, x, y, pen=None, justified='left'):

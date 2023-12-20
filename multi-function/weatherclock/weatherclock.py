@@ -1,12 +1,15 @@
 
 from operatingmode import OperatingMode 
 from weatherclock.weather_api_map import WEATHER_API_MAP
-import weatherclock.weathericons
+from common.util import current_time_ms
+from common.util import debug
+from common.util import draw_icon 
+import weatherclock.weathericons as weathericons
 import small_font as sf
 import urequests
 import time
 
-# Make sure we can get the wifi credentials. 
+# Make sure we can get the weather API key
 try:
     from secrets import WEATHER_API_KEY
 except ImportError:
@@ -28,17 +31,6 @@ WEATHER_WIDTH   = 29
 WEATHER_POLL_TIME = 60 * 1000 # poll weather every minute.
 CLOCK_TICK_TIME = 500 # redisplay clock every 0.5 seconds 
 
-show_debug = True 
-
-def current_time_ms():
-    ct_ms = time.ticks_ms()
-    return (ct_ms) 
-
-def debug(output_string):
-    if ( show_debug ):
-        print(output_string) 
-
-
 class WeatherClockMode(OperatingMode):
 
 
@@ -50,6 +42,12 @@ class WeatherClockMode(OperatingMode):
         self.utc_hours = 0
         self.utc_offset = 0
 
+    def set_active(self, is_active):
+        super().set_active(is_active)
+        # Force redisplay of time. 
+        self.next_weather_time = -1
+        self.next_clock_time = -1
+        
     def set_unicorn(self, unicorn):
         super().set_unicorn(unicorn)
 

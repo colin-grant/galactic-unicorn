@@ -8,7 +8,6 @@ class OperatingMode:
     CHANGE_ACTIVE   = 1
     CHANGE_INACTIVE = 2 
     
-
     def __init__(self):
         
         self.rtc = None

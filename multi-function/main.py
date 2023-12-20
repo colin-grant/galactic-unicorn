@@ -32,9 +32,9 @@ BRIGHTNESS_CHECK_TIME = 5000 # check brightness every 5 seconds
 next_brightness_check_time = -1
 
 MIN_BRIGHTNESS = 0.05
-MAX_BRIGHTNESS = 0.4
+MAX_BRIGHTNESS = 0.8
 
-MIN_LIGHT_LEVEL = 20
+MIN_LIGHT_LEVEL = 15
 MAX_LIGHT_LEVEL = 100 
 
 # the wireless lan device:
@@ -162,13 +162,13 @@ def check_brightness():
 
         gu.set_brightness(brightness)
         
-        if brightness == 0:
-            print("Going into a deep sleep now")
-            time.sleep(0.5)
-            clear_screen()
+        #if brightness == 0:
+        #    print("Going into a deep sleep now")
+        #    time.sleep(0.5)
+        #    clear_screen()
             #machine.lightsleep(5000)
-            time.sleep(5)
-            print("Out of deep sleep")
+        #    time.sleep(5)
+        #    print("Out of deep sleep")
 
         next_brightness_check_time = current_time_ms() + BRIGHTNESS_CHECK_TIME 
     
@@ -208,12 +208,13 @@ while True:
     
     check_wifi() 
     
-    if switch_a.is_clicked:
+    if switch_a.is_clicked():
         # change operating mode
         OPERATING_MODES[active_mode_index].set_active(False)
         active_mode_index += 1
         if active_mode_index >= len(OPERATING_MODES):
             active_mode_index = 0
+        clear_screen() 
         OPERATING_MODES[active_mode_index].set_active(True)
         prev_mode_index = None 
 
