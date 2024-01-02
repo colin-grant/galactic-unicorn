@@ -1,0 +1,73 @@
+[1mdiff --git a/multi-function/main.py b/multi-function/main.py[m
+[1mindex 111f279..d55bd6b 100644[m
+[1m--- a/multi-function/main.py[m
+[1m+++ b/multi-function/main.py[m
+[36m@@ -32,10 +32,18 @@[m [mBRIGHTNESS_CHECK_TIME = 5000 # check brightness every 5 seconds[m
+ next_brightness_check_time = -1[m
+ [m
+ MIN_BRIGHTNESS = 0.05[m
+[31m-MAX_BRIGHTNESS = 0.8[m
+[32m+[m[32mMAX_BRIGHTNESS = 0.6[m
+[32m+[m
+[32m+[m[32mMIN_LIGHT_LEVEL_DAY = 10[m
+[32m+[m[32mMAX_LIGHT_LEVEL_DAY = 100[m
+[32m+[m
+[32m+[m[32mMIN_LIGHT_LEVEL_NIGHT = 16[m
+[32m+[m[32mMAX_LIGHT_LEVEL_NIGHT = 100[m
+[32m+[m
+[32m+[m[32m# night start and stop times (UTC only I think).[m[41m [m
+[32m+[m[32mNIGHT_TIME_START_HOUR = 23[m
+[32m+[m[32mNIGHT_TIME_END_HOUR = 6[m[41m [m
+ [m
+[31m-MIN_LIGHT_LEVEL = 15[m
+[31m-MAX_LIGHT_LEVEL = 100 [m
+ [m
+ # the wireless lan device:[m
+ wlan = None[m
+[36m@@ -135,6 +143,22 @@[m [mdef sync_time():[m
+         except OSError:[m
+             debug(f"Failure syncing time attempt {i} of {max_attempts}") [m
+             pass[m
+[32m+[m
+[32m+[m[32mdef is_night():[m
+[32m+[m[32m    # Work out if it is night (think this only works for UTC times).[m
+[32m+[m[32m    # we also assume night starts in evening and ends in morning (which isn't very[m
+[32m+[m[32m    # friendly for non UTC. Think we need to find a better way to work out local time).[m[41m [m
+[32m+[m[32m    _, _, _, _, hour, _, _, _ = rtc.datetime()[m
+[32m+[m[32m    #debug(f'is_night() hour = {hour}')[m
+[32m+[m[32m    return (hour >= NIGHT_TIME_START_HOUR) or (hour < NIGHT_TIME_END_HOUR)[m
+[32m+[m
+[32m+[m[32mdef get_min_max_light_levels():[m
+[32m+[m[32m    is_night_time = is_night()[m
+[32m+[m[41m    [m
+[32m+[m[32m    min_light_level = MIN_LIGHT_LEVEL_NIGHT if is_night_time else MIN_LIGHT_LEVEL_DAY[m
+[32m+[m[32m    max_light_level = MAX_LIGHT_LEVEL_NIGHT if is_night_time else MAX_LIGHT_LEVEL_DAY[m
+[32m+[m[41m    [m
+[32m+[m[32m    return min_light_level, max_light_level[m[41m [m
+     [m
+ def check_brightness():[m
+     [m
+[36m@@ -145,17 +169,20 @@[m [mdef check_brightness():[m
+         brightness = 0[m
+         [m
+         light_level = gu.light()[m
+[32m+[m[41m        [m
+[32m+[m[32m        min_light_level, max_light_level = get_min_max_light_levels()[m[41m [m
+ [m
+         #graphics.set_pen(BLACK)[m
+         #graphics.line(0,5,53,5)[m
+         #graphics.set_pen(WHITE)[m
+         #graphics.line(0,5,min(53,int(light_level)),5)[m
+[31m-        print(f'light level = {light_level}')[m
+[32m+[m[32m        #print(f'light level = {light_level}')[m
+[32m+[m[32m        #print(f'min = {min_light_level}, max = {max_light_level}, is_night = {is_night()}')[m
+             [m
+[31m-        if light_level < MIN_LIGHT_LEVEL:[m
+[32m+[m[32m        if light_level < min_light_level:[m
+             brightness = 0[m
+         else:[m
+[31m-            brightness = (light_level - MIN_LIGHT_LEVEL) / (MAX_LIGHT_LEVEL - MIN_LIGHT_LEVEL)[m
+[32m+[m[32m            brightness = (light_level - min_light_level) / (max_light_level - min_light_level)[m
+             brightness = (brightness * (MAX_BRIGHTNESS - MIN_BRIGHTNESS)) + MIN_BRIGHTNESS [m
+ [m
+         #print(f"brightness = {brightness}")[m

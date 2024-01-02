@@ -82,7 +82,7 @@ class ChristmasClockMode(OperatingMode):
                 seconds_till_christmas = 0
                 
             if ( not is_christmas_day ):
-                sf.display_time(self.display, hour, minute, 10, 0, pen=self.CLOCK_PEN, justified='left')
+                sf.display_time(self.display, hour, minute, 11, 0, pen=self.CLOCK_PEN, justified='left')
                 sf.display_long_date(self.display, day, month, 52, 0, pen=self.DATE_PEN, justified='right')
 
                 days_till_christmas = int(seconds_till_christmas / (24 * 60 * 60))
@@ -135,7 +135,7 @@ class ChristmasClockMode(OperatingMode):
             else:
                 break
         
-        year_seconds_until = ((day-1) * 24 * 60 * 60)
+        year_seconds_until += ((day-1) * 24 * 60 * 60)
         year_seconds_until += hours * 60 * 60
         year_seconds_until += minutes * 60
         year_seconds_until += seconds

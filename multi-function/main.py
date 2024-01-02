@@ -32,10 +32,18 @@ BRIGHTNESS_CHECK_TIME = 5000 # check brightness every 5 seconds
 next_brightness_check_time = -1
 
 MIN_BRIGHTNESS = 0.05
-MAX_BRIGHTNESS = 0.8
+MAX_BRIGHTNESS = 0.6
 
-MIN_LIGHT_LEVEL = 15
-MAX_LIGHT_LEVEL = 100 
+MIN_LIGHT_LEVEL_DAY = 10
+MAX_LIGHT_LEVEL_DAY = 100
+
+MIN_LIGHT_LEVEL_NIGHT = 16
+MAX_LIGHT_LEVEL_NIGHT = 100
+
+# night start and stop times (UTC only I think). 
+NIGHT_TIME_START_HOUR = 23
+NIGHT_TIME_END_HOUR = 6 
+
 
 # the wireless lan device:
 wlan = None
@@ -135,6 +143,22 @@ def sync_time():
         except OSError:
             debug(f"Failure syncing time attempt {i} of {max_attempts}") 
             pass
+
+def is_night():
+    # Work out if it is night (think this only works for UTC times).
+    # we also assume night starts in evening and ends in morning (which isn't very
+    # friendly for non UTC. Think we need to find a better way to work out local time). 
+    _, _, _, _, hour, _, _, _ = rtc.datetime()
+    #debug(f'is_night() hour = {hour}')
+    return (hour >= NIGHT_TIME_START_HOUR) or (hour < NIGHT_TIME_END_HOUR)
+
+def get_min_max_light_levels():
+    is_night_time = is_night()
+    
+    min_light_level = MIN_LIGHT_LEVEL_NIGHT if is_night_time else MIN_LIGHT_LEVEL_DAY
+    max_light_level = MAX_LIGHT_LEVEL_NIGHT if is_night_time else MAX_LIGHT_LEVEL_DAY
+    
+    return min_light_level, max_light_level 
     
 def check_brightness():
     
@@ -145,17 +169,20 @@ def check_brightness():
         brightness = 0
         
         light_level = gu.light()
+        
+        min_light_level, max_light_level = get_min_max_light_levels() 
 
         #graphics.set_pen(BLACK)
         #graphics.line(0,5,53,5)
         #graphics.set_pen(WHITE)
         #graphics.line(0,5,min(53,int(light_level)),5)
-        print(f'light level = {light_level}')
+        #print(f'light level = {light_level}')
+        #print(f'min = {min_light_level}, max = {max_light_level}, is_night = {is_night()}')
             
-        if light_level < MIN_LIGHT_LEVEL:
+        if light_level < min_light_level:
             brightness = 0
         else:
-            brightness = (light_level - MIN_LIGHT_LEVEL) / (MAX_LIGHT_LEVEL - MIN_LIGHT_LEVEL)
+            brightness = (light_level - min_light_level) / (max_light_level - min_light_level)
             brightness = (brightness * (MAX_BRIGHTNESS - MIN_BRIGHTNESS)) + MIN_BRIGHTNESS 
 
         #print(f"brightness = {brightness}")
