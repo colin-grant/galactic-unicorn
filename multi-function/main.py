@@ -253,8 +253,9 @@ while True:
         status = mode.run()
         
         if status == OperatingMode.CHANGE_ACTIVE:
-            # This mode wants to become temporarily active, so we change it, and save the previous active
-            # mode so we can roll back when the temporary mode wants to become inactive. 
+            # This mode wants to become active, so we change it, and save the previous active
+            # mode so we can roll back if the mode is temporary and then wants to become inactive.
+            # (eg. Football score just changed and wants to display new score for 1 minute?). 
             OPERATING_MODES[active_mode_index].set_active(False) 
             prev_active_index = active_mode_index
             mode.set_active(True) 
