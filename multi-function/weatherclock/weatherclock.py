@@ -3,7 +3,7 @@ from operatingmode import OperatingMode
 from weatherclock.weather_api_map import WEATHER_API_MAP
 from common.util import current_time_ms
 from common.util import debug
-from common.util import draw_icon 
+from common.util import draw_icon
 import weatherclock.weathericons as weathericons
 import small_font as sf
 import urequests
@@ -15,8 +15,8 @@ try:
 except ImportError:
     print("Create secrets.py with your security credentials.")
 
-WEATHER_API_URL = 'http://api.weatherapi.com/v1/current.json'
-WEATHER_API_LOCATION = 'Berkhamsted'
+from setup import WEATHER_API_URL
+from setup import WEATHER_API_LOCATION 
 
 WHITE_RGB       = (255,255,255)
 BLACK_RGB       = (0,0,0)
@@ -39,7 +39,6 @@ class WeatherClockMode(OperatingMode):
         
         self.next_weather_time = -1
         self.next_clock_time = -1 
-        self.utc_hours = 0
         self.utc_offset = 0
 
     def set_active(self, is_active):
@@ -85,17 +84,14 @@ class WeatherClockMode(OperatingMode):
                 
                 if ( response.status_code == 200 ): 
                     json_response = response.json()
+                    
+                    #debug(f"OK: {json_response}") 
 
                     # extract time and compare with displayed time to see if we need to change the UTC offset.
                     location = json_response['location']
                     local_timedate_string = location['localtime']
                     parts = local_timedate_string.split(" ")
                     localtime = parts[1] 
-
-                    # use the weather time to work out the local timezone. 
-                    h,m = localtime.split(":")
-                    debug(f"Time = {h}:{m}") 
-                    self.utc_offset = self.utc_hours - int(h)
                     
                     # extract weather fields we're interested in 
                     response_weather = json_response['current'] 
@@ -141,7 +137,6 @@ class WeatherClockMode(OperatingMode):
             
             year, month, day, wd, hour, minute, second, _ = self.rtc.datetime()
             
-            self.utc_hours = hour
             hour += self.utc_offset 
             
             self.display.set_pen(self.BLACK_PEN)

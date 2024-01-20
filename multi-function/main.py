@@ -4,13 +4,15 @@ import time
 import math
 import machine
 import network
-import ntptime
 from galactic import GalacticUnicorn
 from picographics import PicoGraphics, DISPLAY_GALACTIC_UNICORN as DISPLAY
 from common.galacticunicornbutton import GalacticUnicornButton 
 
+from realtimeclock import RealTimeClock 
+
 from operatingmode import OperatingMode 
 from setup import OPERATING_MODES
+from setup import TIMEZONE 
 
 # Make sure we can get the wifi credentials. 
 try:
@@ -25,7 +27,7 @@ gu = GalacticUnicorn()
 graphics = PicoGraphics(DISPLAY)
 
 # create the real time clock object
-rtc = machine.RTC()
+rtc = RealTimeClock(machine.RTC(), TIMEZONE)
 
 # Control the brightness using the light sensor
 BRIGHTNESS_CHECK_TIME = 5000 # check brightness every 5 seconds
@@ -129,25 +131,10 @@ def sync_time():
     if not wifi_available:
         return
 
-    # Try a few times
-    time_synced = False
-    i = 0
-    max_attempts = 5 
-    
-    while not time_synced and i < max_attempts:
-        i += 1 
-        try:
-            ntptime.settime()
-            time_synced = True 
-            debug("Time set")
-        except OSError:
-            debug(f"Failure syncing time attempt {i} of {max_attempts}") 
-            pass
+    rtc.sync_time()
 
 def is_night():
-    # Work out if it is night (think this only works for UTC times).
-    # we also assume night starts in evening and ends in morning (which isn't very
-    # friendly for non UTC. Think we need to find a better way to work out local time). 
+    # Work out if it is night 
     _, _, _, _, hour, _, _, _ = rtc.datetime()
     #debug(f'is_night() hour = {hour}')
     return (hour >= NIGHT_TIME_START_HOUR) or (hour < NIGHT_TIME_END_HOUR)

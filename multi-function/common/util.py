@@ -9,9 +9,9 @@ def current_time_ms():
 def debug(output_string):
     if ( show_debug ):
         print(output_string)
-        
-# POSSIBLE REFACTOR: This is quite generic - so we could just have a 'get_weather_icon' that
-# returns the vectors, and a more generic function that goes off and draws it. 
+
+# draw an icon given a list of colour 'vectors' where each row is defined as a
+# series of colours with begin and end columns. 
 def draw_icon( display, icon_vectors, x, y, icon_width, icon_height ):
     
     #debug(f'draw_icon: x = {x}, y = {y}, icon_width = {icon_width}, icon_height = {icon_height}')

@@ -23,8 +23,6 @@ class ChristmasClockMode(OperatingMode):
         
         self.next_twinkle_time = -1
         self.next_clock_time = -1 
-        self.utc_hours = 0
-        self.utc_offset = 0
 
     def set_active(self, is_active):
         super().set_active(is_active)
@@ -59,10 +57,7 @@ class ChristmasClockMode(OperatingMode):
         if ( self.next_clock_time == -1 or current_time_ms() > self.next_clock_time ):
             
             year, month, day, wd, hour, minute, second, _ = self.rtc.datetime()
-            
-            self.utc_hours = hour
-            hour += self.utc_offset 
-            
+
             self.display.set_pen(self.BLACK_PEN)
             self.display.rectangle(9, 0, 44,11)
             #self.display.rectangle(11, 6, 42,5)
