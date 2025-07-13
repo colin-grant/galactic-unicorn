@@ -1,7 +1,7 @@
 
 import urequests
-from setup import TIMEZONE
-from common.util import debug 
+from common.util import debug
+from setup import TIME_API_URL 
 
 class RealTimeClock:
     """ Real Time Clock that can query timeapi.io to update to a local timezone. """
@@ -27,7 +27,7 @@ class RealTimeClock:
         """ Send a query to timeapi.io to get the current time given the setup time location. """
         try:
             # get current weather from weatherapi.com
-            fullurl = f'https://timeapi.io/api/Time/current/zone?timeZone={self.timezone}' 
+            fullurl = f'{TIME_API_URL}?timeZone={self.timezone}' 
             debug(f"Requesting call to {fullurl}")
                 
             json_response = None

@@ -87,12 +87,6 @@ class WeatherClockMode(OperatingMode):
                     
                     #debug(f"OK: {json_response}") 
 
-                    # extract time and compare with displayed time to see if we need to change the UTC offset.
-                    location = json_response['location']
-                    local_timedate_string = location['localtime']
-                    parts = local_timedate_string.split(" ")
-                    localtime = parts[1] 
-                    
                     # extract weather fields we're interested in 
                     response_weather = json_response['current'] 
                     response_weather_condition = response_weather['condition'] 
